@@ -336,7 +336,7 @@ export default function CurateBox({ addToCart, setActiveTab }: CurateBoxProps) {
                         <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
                         {showAiCardWriter ? "Hide AI Card Assistant" : "Draft Exquisite Message with Lunara AI"}
                       </span>
-                      <span className="text-[10px] bg-amber-500/10 px-2 py-0.5 rounded-full uppercase">Google Gemini</span>
+                      <span className="text-[10px] bg-amber-500/10 px-2 py-0.5 rounded-full uppercase">AI Provider</span>
                     </button>
 
                     {showAiCardWriter && (
@@ -399,7 +399,7 @@ export default function CurateBox({ addToCart, setActiveTab }: CurateBoxProps) {
                         {/* Generated Drafts */}
                         {aiCardDrafts.length > 0 && (
                           <div className="space-y-3 pt-2">
-                            <span className="text-[10px] font-mono font-bold text-amber-800 uppercase block">Gemini Draft Recommendations:</span>
+                            <span className="text-[10px] font-mono font-bold text-amber-800 uppercase block">AI Draft Recommendations:</span>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               {aiCardDrafts.map((draft, i) => (
                                 <div

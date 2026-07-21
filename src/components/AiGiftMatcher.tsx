@@ -141,7 +141,7 @@ export default function AiGiftMatcher({ addToCart, setActiveTab }: AiGiftMatcher
           <BrainCircuit className="h-10 w-10 text-amber-500 mx-auto animate-bounce" />
           <h1 className="font-serif text-3xl sm:text-4xl font-light text-stone-900 mt-2">AI Gift Matcher</h1>
           <p className="text-stone-500 mt-3 text-sm leading-relaxed">
-            Harness Google Gemini’s reasoning models to design bespoke surprise strategies. Answer a few lifestyle details about your recipient, and receive immediate tailored recommendations.
+            Use the configured AI provider to design bespoke surprise strategies. Answer a few lifestyle details about your recipient, and receive immediate tailored recommendations.
           </p>
         </div>
 
@@ -149,7 +149,7 @@ export default function AiGiftMatcher({ addToCart, setActiveTab }: AiGiftMatcher
         {loading && (
           <div className="bg-stone-900 text-white rounded-3xl p-12 text-center max-w-lg mx-auto shadow-xl border border-stone-800 my-10">
             <RefreshCw className="h-10 w-10 text-amber-500 mx-auto animate-spin mb-4" />
-            <h3 className="font-serif text-xl font-light text-stone-100">Consulting Google Gemini</h3>
+            <h3 className="font-serif text-xl font-light text-stone-100">Consulting AI Provider</h3>
             <p className="text-amber-400 text-xs mt-2 font-semibold font-mono animate-pulse">{loadingMessage}</p>
           </div>
         )}

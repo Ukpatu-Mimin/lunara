@@ -359,7 +359,7 @@ export default function MemoryVault({ memories, addMemory, deleteMemory }: Memor
             {isNarratingLoading ? (
               <div className="py-20 text-center space-y-4">
                 <div className="h-10 w-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-                <span className="text-xs font-mono tracking-widest text-stone-500 uppercase block">Gemini is writing bespoke prose...</span>
+                <span className="text-xs font-mono tracking-widest text-stone-500 uppercase block">AI is writing bespoke prose...</span>
               </div>
             ) : (
               <div className="space-y-6 text-center">

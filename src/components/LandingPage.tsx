@@ -44,7 +44,7 @@ export default function LandingPage({ setActiveTab, isLoggedIn, setIsLoginModalO
     },
     {
       title: 'AI-Powered Gift Matching',
-      desc: 'Input age, interests, love language, and budget. Our Gemini AI designs the perfect surprise formula.',
+      desc: 'Input age, interests, love language, and budget. Our AI assistant designs the perfect surprise formula.',
       icon: Sparkles,
       tab: 'matcher',
       image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=400',

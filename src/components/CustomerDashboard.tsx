@@ -1340,7 +1340,7 @@ export default function CustomerDashboard({
                     {isPlanningLoading && (
                       <div className="border border-stone-100 rounded-3xl p-16 text-center text-stone-400 space-y-4 bg-stone-50/50">
                         <div className="h-10 w-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-                        <span className="text-xs font-mono tracking-widest uppercase text-stone-500 block">Gemini is sketching theatrical sequences...</span>
+                        <span className="text-xs font-mono tracking-widest uppercase text-stone-500 block">AI is sketching theatrical sequences...</span>
                       </div>
                     )}
 

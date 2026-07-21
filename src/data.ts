@@ -307,7 +307,7 @@ export const FAQS = [
   },
   {
     question: 'Is the AI Gift Matcher free to use?',
-    answer: 'Yes! Our AI Gift Matcher is a complimentary feature driven by Google Gemini. Simply share details about your recipient (their personality, age, interests, love language, and your budget), and the model will suggest custom gifting configurations.'
+    answer: 'Yes! Our AI Gift Matcher is a complimentary feature driven by the configured AI provider. Simply share details about your recipient (their personality, age, interests, love language, and your budget), and the model will suggest custom gifting configurations.'
   },
   {
     question: 'Do you deliver across Nigeria?',

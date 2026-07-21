@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 
+dotenv.config({ path: ".env.local" });
 dotenv.config();
 
 const app = express();
@@ -11,30 +12,108 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Initialize the Google GenAI client securely on the server-side only
-const apiKey = process.env.GEMINI_API_KEY;
+// Initialize AI providers securely on the server-side only.
+// OpenAI is the default provider when both keys exist. Set AI_PROVIDER=gemini to force Gemini.
+const geminiApiKey = process.env.GEMINI_API_KEY;
+const openaiApiKey = process.env.OPENAI_API_KEY;
+const openaiModel = process.env.OPENAI_MODEL || "gpt-5.2";
+const preferredAiProvider = (process.env.AI_PROVIDER || '').toLowerCase();
 let ai: GoogleGenAI | null = null;
 
-if (apiKey) {
+if (geminiApiKey) {
   ai = new GoogleGenAI({
-    apiKey: apiKey,
+    apiKey: geminiApiKey,
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
       }
     }
   });
-} else {
-  console.warn("WARNING: GEMINI_API_KEY environment variable is not set. AI Gift Matcher will run in fallback simulation mode.");
+}
+
+if (!geminiApiKey && !openaiApiKey) {
+  console.warn("WARNING: No GEMINI_API_KEY or OPENAI_API_KEY environment variable is set. AI features will run in fallback simulation mode.");
+}
+
+function getAiProvider(): 'gemini' | 'openai' | null {
+  if (preferredAiProvider === 'gemini' && ai) return 'gemini';
+  if (preferredAiProvider === 'openai' && openaiApiKey) return 'openai';
+  if (openaiApiKey) return 'openai';
+  if (ai) return 'gemini';
+  return null;
+}
+
+function extractOpenAIText(payload: any): string {
+  if (typeof payload.output_text === 'string') return payload.output_text;
+
+  const chunks: string[] = [];
+  for (const item of payload.output || []) {
+    for (const content of item.content || []) {
+      if (typeof content.text === 'string') chunks.push(content.text);
+    }
+  }
+
+  return chunks.join('\n').trim();
+}
+
+async function callOpenAI(prompt: string, options?: { json?: boolean; schemaName?: string; instructions?: string; }): Promise<string> {
+  if (!openaiApiKey) throw new Error('OPENAI_API_KEY is not configured');
+
+  const body: any = {
+    model: openaiModel,
+    input: prompt,
+  };
+
+  if (options?.instructions) body.instructions = options.instructions;
+
+  if (options?.json) {
+    body.text = {
+      format: {
+        type: 'json_schema',
+        name: options.schemaName || 'lunara_json_response',
+        strict: false,
+        schema: {
+          type: 'object',
+          additionalProperties: true,
+        },
+      },
+    };
+  }
+
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload?.error?.message || 'OpenAI API request failed');
+
+  const text = extractOpenAIText(payload);
+  if (!text) throw new Error('No text returned from OpenAI API');
+  return text;
+}
+
+async function callOpenAIJson(prompt: string, schemaName: string): Promise<any> {
+  const text = await callOpenAI(`${prompt}\n\nReturn only valid JSON. Do not include markdown fences or commentary.`, {
+    json: true,
+    schemaName,
+  });
+  return JSON.parse(text.trim());
 }
 
 // AI Gift Matcher server-side proxy route
 app.post("/api/gift-match", async (req, res) => {
   const { age, gender, interests, personality, loveLanguage, budget } = req.body;
 
-  if (!ai) {
+  const aiProvider = getAiProvider();
+
+  if (!aiProvider) {
     // Elegant fallback simulation if no API key is set yet, ensuring the app remains 100% robust and doesn't crash
-    console.log("Simulating Gift Match recommendations due to missing GEMINI_API_KEY");
+    console.log("Simulating Gift Match recommendations due to missing AI provider key");
     return res.json({
       giftStrategy: `Based on their love language (${loveLanguage || 'Quality Time'}) and personality, we recommend prioritizing custom experiences and sensory gifts.`,
       recommendedProducts: [
@@ -76,6 +155,13 @@ Provide a structured recommendation for:
 5. Recommended room decor themes (recommendedDecor - object with name and reason).
 
 Focus on luxury, elegance, and unforgettable moments.`;
+
+    if (aiProvider === 'openai') {
+      const jsonResult = await callOpenAIJson(prompt, 'gift_match');
+      return res.json(jsonResult);
+    }
+
+    if (!ai) throw new Error('Gemini API client is not configured');
 
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
@@ -148,7 +234,7 @@ Focus on luxury, elegance, and unforgettable moments.`;
     return res.json(jsonResult);
 
   } catch (error: any) {
-    console.error("Gemini Matcher error:", error);
+    console.error("AI Matcher error:", error);
     res.status(500).json({ error: "Failed to generate AI recommendations", details: error.message });
   }
 });
@@ -157,7 +243,9 @@ Focus on luxury, elegance, and unforgettable moments.`;
 app.post("/api/generate-card-message", async (req, res) => {
   const { recipientName, relationship, occasion, tone } = req.body;
 
-  if (!ai) {
+  const aiProvider = getAiProvider();
+
+  if (!aiProvider) {
     // Premium fallback card messages if no API key is configured
     return res.json({
       messages: [
@@ -176,6 +264,13 @@ Generate 2 distinct, premium, deeply personal greeting card messages with the fo
 - Tone Theme: ${tone || 'Heartfelt'}
 
 Ensure each option is exquisite, heartfelt, emotionally resonant, and avoids cliché. Keep each card message compact (under 3 lines or 45 words), perfect for hand calligraphy.`;
+
+    if (aiProvider === 'openai') {
+      const jsonResult = await callOpenAIJson(prompt, 'card_messages');
+      return res.json(jsonResult);
+    }
+
+    if (!ai) throw new Error('Gemini API client is not configured');
 
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
@@ -205,7 +300,7 @@ Ensure each option is exquisite, heartfelt, emotionally resonant, and avoids cli
     return res.json(jsonResult);
 
   } catch (error: any) {
-    console.error("Gemini card generator error:", error);
+    console.error("AI card generator error:", error);
     res.status(500).json({ error: "Failed to generate card messages", details: error.message });
   }
 });
@@ -214,7 +309,9 @@ Ensure each option is exquisite, heartfelt, emotionally resonant, and avoids cli
 app.post("/api/narrate-memory", async (req, res) => {
   const { title, date, recipientName, description } = req.body;
 
-  if (!ai) {
+  const aiProvider = getAiProvider();
+
+  if (!aiProvider) {
     return res.json({
       narrative: `A beautiful surprise captured on ${date || 'a special day'} named "${title || 'Cherished Memory'}" for ${recipientName || 'a loved one'}. The air was sweet with laughter, and every detail whispered of a memory that will forever endure in our hearts.`
     });
@@ -230,6 +327,13 @@ Memory log:
 - Description of the moment: ${description || 'A joyful surprise moment shared together.'}
 
 Generate an elegant, heartwarming, and poetic narrative of exactly 2-3 stanzas or brief paragraphs. Speak in an eternal, classical voice that captures the magic of this unforgettable surprise milestone. Make it highly polished and ready to be printed on handmade parchment.`;
+
+    if (aiProvider === 'openai') {
+      const jsonResult = await callOpenAIJson(prompt, 'memory_narrative');
+      return res.json(jsonResult);
+    }
+
+    if (!ai) throw new Error('Gemini API client is not configured');
 
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
@@ -258,7 +362,7 @@ Generate an elegant, heartwarming, and poetic narrative of exactly 2-3 stanzas o
     return res.json(jsonResult);
 
   } catch (error: any) {
-    console.error("Gemini memory narrator error:", error);
+    console.error("AI memory narrator error:", error);
     res.status(500).json({ error: "Failed to narrate memory", details: error.message });
   }
 });
@@ -267,7 +371,9 @@ Generate an elegant, heartwarming, and poetic narrative of exactly 2-3 stanzas o
 app.post("/api/concierge-chat", async (req, res) => {
   const { message, history } = req.body;
 
-  if (!ai) {
+  const aiProvider = getAiProvider();
+
+  if (!aiProvider) {
     // Exquisite fallback responses for the chat concierge
     const lowerMessage = (message || '').toLowerCase();
     let reply = "Welcome to Lunara's luxury concierge. I can guide you in picking a perfume, designing custom room decor, planning beach sunset cruises, or building bespoke gift boxes.";
@@ -288,6 +394,23 @@ app.post("/api/concierge-chat", async (req, res) => {
       role: msg.role === 'user' ? 'user' as const : 'model' as const,
       parts: [{ text: msg.content }]
     }));
+
+    if (aiProvider === 'openai') {
+      const historyText = (history || [])
+        .map((msg: any) => `${msg.role === 'user' ? 'Client' : 'Amber'}: ${msg.content}`)
+        .join('\n');
+      const prompt = `${historyText ? historyText + '\n' : ''}Client: ${message}\nAmber:`;
+      const reply = await callOpenAI(prompt, {
+        instructions: `You are Lunara's Senior Luxury Concierge, named Amber.
+Lunara is Nigeria's most exclusive full-service luxury gifting and romantic room-decor setup company.
+Your persona is incredibly refined, warm, attentive, and highly professional. You speak with grace and elegance.
+You assist customers in navigating premium gifts, curated boxes, room decor installations, couples surprise experiences, Nigerian Naira budget planning, and creative surprise strategy concepts.
+Keep responses under 80 words, focused on luxurious solutions, and encourage the user to explore the relevant Lunara tabs. Never break character.`,
+      });
+      return res.json({ reply });
+    }
+
+    if (!ai) throw new Error('Gemini API client is not configured');
 
     // Create chat session with a tailored system instruction
     const chat = ai.chats.create({
@@ -314,7 +437,7 @@ Keep responses relatively brief (under 80 words), focused on luxurious solutions
     return res.json({ reply });
 
   } catch (error: any) {
-    console.error("Gemini Concierge Chat error:", error);
+    console.error("AI Concierge Chat error:", error);
     res.status(500).json({ error: "Failed to generate concierge response", details: error.message });
   }
 });
@@ -326,7 +449,9 @@ app.post("/api/generate-itinerary", async (req, res) => {
   const budgetVal = budgetTier === 'royal' ? 1200000 : budgetTier === 'diamond' ? 500000 : 180000;
   const tierName = budgetTier === 'royal' ? 'Royal Prestige' : budgetTier === 'diamond' ? 'Diamond Elite' : 'Luxe Premium';
 
-  if (!ai) {
+  const aiProvider = getAiProvider();
+
+  if (!aiProvider) {
     // Elegant fallback simulation
     return res.json({
       themeName: `The Enchanted ${occasion || 'Milestone'} Sanctuary`,
@@ -379,6 +504,13 @@ Formulate an extraordinary, highly specific, step-by-step surprise event timelin
 
 Generate a beautiful theme name, a short piece of expert planner advice, and exactly 4 to 5 detailed sequential steps with specific times, exquisite descriptions, and allocated costs in Naira (₦) summing close to the target budget of ₦${budgetVal}. No markdown inside fields.`;
 
+    if (aiProvider === 'openai') {
+      const jsonResult = await callOpenAIJson(prompt, 'itinerary');
+      return res.json(jsonResult);
+    }
+
+    if (!ai) throw new Error('Gemini API client is not configured');
+
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
       contents: prompt,
@@ -416,7 +548,7 @@ Generate a beautiful theme name, a short piece of expert planner advice, and exa
     return res.json(jsonResult);
 
   } catch (error: any) {
-    console.error("Gemini Surprise Planner error:", error);
+    console.error("AI Surprise Planner error:", error);
     res.status(500).json({ error: "Failed to generate surprise plan", details: error.message });
   }
 });
@@ -426,7 +558,9 @@ app.post("/api/crm-forecasts", async (req, res) => {
   const { recipients, occasions } = req.body;
 
   // Let's create beautiful premium recommendations
-  if (!ai) {
+  const aiProvider = getAiProvider();
+
+  if (!aiProvider) {
     const listRecs = recipients || [];
     const listOccs = occasions || [];
 
@@ -474,6 +608,13 @@ Saved Occasions: ${JSON.stringify(occasions || [])}
 
 Generate exactly 2 premium, highly targeted milestone forecasts with detailed descriptions and specific high-ticket item recommendations in Naira (₦).
 Speak with absolute prestige, refer to previous gifts (simulate if none recorded, e.g. "Last year you sent her our classic rose box"), and craft compelling, hyper-tailored reasons why they would love these suggestions. Return valid JSON.`;
+
+    if (aiProvider === 'openai') {
+      const jsonResult = await callOpenAIJson(prompt, 'crm_forecasts');
+      return res.json(jsonResult);
+    }
+
+    if (!ai) throw new Error('Gemini API client is not configured');
 
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash",
@@ -523,7 +664,7 @@ Speak with absolute prestige, refer to previous gifts (simulate if none recorded
     return res.json(jsonResult);
 
   } catch (error: any) {
-    console.error("Gemini CRM Forecasting error:", error);
+    console.error("AI CRM Forecasting error:", error);
     res.status(500).json({ error: "Failed to generate CRM forecasts", details: error.message });
   }
 });
