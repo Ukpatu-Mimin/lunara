@@ -12,6 +12,7 @@ import AiGiftMatcher from './components/AiGiftMatcher';
 import CustomerDashboard from './components/CustomerDashboard';
 import MemoryVault from './components/MemoryVault';
 import CartModal from './components/CartModal';
+import DiscountMarquee from './components/DiscountMarquee';
 
 import { CartItem, Order, Booking, Recipient, Occasion, Memory, Product, RegisteredUser } from './types';
 import { PREMIUM_PRODUCTS } from './data';
@@ -377,8 +378,11 @@ export default function App() {
         isAdmin={isAdmin}
       />
 
+      {/* Discount Ribbon & Promo Marquee */}
+      <DiscountMarquee onNavigate={handleSetActiveTab} />
+
       {/* Main content slot */}
-      <main className="flex-grow pt-16">
+      <main className="flex-grow">
         {activeTab === 'home' && (
           <LandingPage
             setActiveTab={handleSetActiveTab}
