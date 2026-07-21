@@ -110,7 +110,7 @@ Install these before running the project:
 1. Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Ukpatu-Mimin/lunara.git
 cd lunara
 ```
 
