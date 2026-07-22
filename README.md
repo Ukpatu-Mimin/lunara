@@ -274,6 +274,40 @@ This is a polished prototype, not a complete production commerce system.
 - Add file storage for uploaded product and memory images.
 - Configure deployment environment variables securely.
 
+
+## Use Of Codex And GPT-5.6
+
+Codex was used throughout the entire Lunara development workflow. It helped inspect and explain the existing project, reason through the architecture, update the backend AI provider design, improve documentation, adjust user-facing copy, and verify the changed files.
+
+Codex was used for:
+
+- Understanding the original Vite, React, TypeScript, and Express codebase.
+- Explaining the project structure, major components, state flow, and AI routes.
+- Writing the detailed README documentation.
+- Updating the AI backend so the project supports OpenAI by default and Gemini as a secondary option.
+- Adding environment-variable documentation for `OPENAI_API_KEY`, `OPENAI_MODEL`, `GEMINI_API_KEY`, and `AI_PROVIDER`.
+- Changing Gemini-specific UI text to provider-neutral AI wording.
+- Reviewing diffs and checking for whitespace issues before completion.
+
+GPT-5.6 is supported through Lunara's OpenAI provider path. The Express server calls the OpenAI Responses API from `server.ts`, keeping the API key server-side and hidden from the browser. OpenAI is the default AI provider when `OPENAI_API_KEY` is configured, while Gemini remains available as an optional second provider through `GEMINI_API_KEY`.
+
+The GPT-powered features include:
+
+- AI gift matching from recipient personality, interests, love language, and budget.
+- AI greeting card message generation for curated gift boxes.
+- AI memory narration for the Memory Vault.
+- Amber, the AI concierge chatbot.
+- AI surprise itinerary generation for milestone events.
+- AI relationship CRM forecasts for upcoming gifting opportunities.
+
+To use GPT-5.6 explicitly, configure:
+
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-5.6
+AI_PROVIDER=openai
+```
+
 ## Environment Variables
 
 ```bash
